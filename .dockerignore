@@ -1,0 +1,47 @@
+# Dependency directories
+node_modules
+.pnp
+.pnp.js
+
+# Build directories
+.next
+out
+build
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Git
+.git
+.gitignore
+
+# Testing and coverage
+coverage
+.nyc_output
+
+# Documentation (kecuali README.md)
+*.md
+!README.md
+!CLAUDE.md
+!AGENTS.md
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Docker files (jangan copy diri sendiri)
+Dockerfile
+.dockerignore
+docker-compose.yml
+nginx/
+
+# Lainnya
+.DS_Store
+*.pem
+*.key
