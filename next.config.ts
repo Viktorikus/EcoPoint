@@ -19,15 +19,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Terapkan ke semua rute
         source: "/(.*)",
         headers: [
           {
             key: "Content-Security-Policy",
-            // CSP yang ketat: 
-            // - default-src 'self'
-            // - style-src allow 'unsafe-inline' (dibutuhkan TailwindCSS)
-            value: "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';",
           },
           {
             key: "X-Frame-Options",
@@ -44,6 +40,10 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
+          },
+          {
+            key: "X-XSS-Protection",
+            value: "1; mode=block",
           },
           {
             key: "Strict-Transport-Security",

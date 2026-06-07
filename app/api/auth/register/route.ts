@@ -1,28 +1,52 @@
 import { NextResponse } from 'next/server'
-import pool from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import { v4 as uuidv4 } from 'uuid'
+import prisma from '@/lib/prisma'
+import { registerSchema, validateBody, sanitizeString } from '@/lib/validation'
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
-    const { name, email, password, phone, address } = body
-    if (!name || !email || !password) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    const { data, error } = await validateBody(registerSchema, req)
+    if (error) return error
 
-    // check existing
-    const [rows] = await pool.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [email]) as any
-    const existing = Array.isArray(rows) ? rows[0] : rows
-    if (existing) return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
+    const { name, email, password, phone, address } = data!
 
-    const hashed = await bcrypt.hash(password, 10)
-    const id = uuidv4()
-    await pool.execute(
-      'INSERT INTO users (id, name, email, password, phone, address, role, points, level, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, NOW())',
-      [id, name, email, hashed, phone ?? null, address ?? null, 'USER']
-    )
+    // Cek duplikat menggunakan Prisma
+    const existing = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true }
+    })
+    
+    if (existing) {
+      return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
+    }
 
-    return NextResponse.json({ ok: true }, { status: 201 })
+    // Hash dengan bcrypt (rounds 12)
+    const hashed = await bcrypt.hash(password, 12)
+
+    // Simpan ke DB pakai Prisma, sanitize inputs
+    const user = await prisma.user.create({
+      data: {
+        name: sanitizeString(name),
+        email: email.toLowerCase().trim(),
+        password: hashed,
+        phone: phone ? sanitizeString(phone) : null,
+        address: address ? sanitizeString(address) : null,
+        role: 'USER',
+        points: 0,
+        level: 1
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        created_at: true
+      }
+    })
+
+    return NextResponse.json({ ok: true, user }, { status: 201 })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Server error' }, { status: 500 })
+    console.error("Registration error:", e)
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
