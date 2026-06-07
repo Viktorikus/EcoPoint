@@ -2,6 +2,7 @@ import AdminSidebar from "@/components/admin/Sidebar"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
+import { headers } from "next/headers"
 import { Plus_Jakarta_Sans } from "next/font/google"
 import { Suspense } from "react"
 
@@ -9,9 +10,12 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "600", "
 
 async function getDeposits() {
   try {
+    const headersList = await headers()
+    const cookie = headersList.get("cookie") || ""
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
     const res = await fetch(`${baseUrl}/api/admin/deposits`, {
       cache: "no-store",
+      headers: { cookie },
     })
     if (!res.ok) return null
     return res.json()
