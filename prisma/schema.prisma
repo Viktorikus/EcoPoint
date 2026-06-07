@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.VarChar(191)
+  name         String
+  email        String   @unique
+  password     String
+  phone        String?
+  address      String?
+  avatar       String?
+  role         Role     @default(USER)
+  points       Int      @default(0)
+  level        Int      @default(1)
+  badges       Badge[]
+  deposits     WasteDeposit[]
+  pickupRequests PickupRequest[]
+  reports      WasteReport[]
+  transactions PointTransaction[]
+  createdAt    DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  PETUGAS
+  USER
+}
+
+model WasteCategory {
+  id          String  @id @default(uuid()) @db.VarChar(191)
+  name        String  // Plastik, Kertas, Kardus, Kaleng, Botol Kaca, Elektronik
+  pointPerKg  Int
+  pricePerKg  Float
+  deposits    WasteDeposit[]
+}
+
+model WasteDeposit {
+  id          String        @id @default(uuid()) @db.VarChar(191)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  categoryId  String
+  category    WasteCategory @relation(fields: [categoryId], references: [id])
+  weight      Float         // dalam kg
+  point       Int
+  photo       String?       // URL foto sampah
+  status      DepositStatus @default(PENDING)
+  verifiedBy  String?       // petugas ID
+  createdAt   DateTime      @default(now())
+}
+
+enum DepositStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model PickupRequest {
+  id          String        @id @default(uuid()) @db.VarChar(191)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  address     String
+  scheduledAt DateTime
+  status      PickupStatus  @default(WAITING)
+  notes       String?
+  createdAt   DateTime      @default(now())
+}
+
+enum PickupStatus {
+  WAITING
+  SCHEDULED
+  ON_THE_WAY
+  DONE
+}
+
+model WasteReport {
+  id          String        @id @default(uuid()) @db.VarChar(191)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  photo       String
+  location    String
+  description String
+  latitude    Float?
+  longitude   Float?
+  status      ReportStatus  @default(REPORTED)
+  createdAt   DateTime      @default(now())
+}
+
+enum ReportStatus {
+  REPORTED
+  ON_PROGRESS
+  COMPLETED
+}
+
+model Reward {
+  id           String  @id @default(uuid()) @db.VarChar(191)
+  name         String
+  pointRequired Int
+  stock        Int
+  category     String  // pulsa, voucher, merchandise
+  image        String?
+  redemptions  Redemption[]
+}
+
+model Redemption {
+  id        String   @id @default(uuid()) @db.VarChar(191)
+  userId    String
+  rewardId  String
+  reward    Reward   @relation(fields: [rewardId], references: [id])
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model PointTransaction {
+  id        String   @id @default(uuid()) @db.VarChar(191)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  pointIn   Int      @default(0)
+  pointOut  Int      @default(0)
+  note      String
+  createdAt DateTime @default(now())
+}
+
+model Badge {
+  id     String @id @default(uuid()) @db.VarChar(191)
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  name   String  // Green Beginner, Eco Hero, Recycling Master
+  earnedAt DateTime @default(now())
+}
+
+model Challenge {
+  id          String   @id @default(uuid()) @db.VarChar(191)
+  title       String
+  description String
+  pointReward Int
+  targetKg    Float?
+  deadline    DateTime
+  isActive    Boolean  @default(true)
+}
