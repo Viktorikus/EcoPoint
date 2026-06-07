@@ -38,7 +38,7 @@ export const paginationSchema = z.object({
   search: z.string().max(100).optional()
 })
 
-export async function validateBody<T>(schema: z.ZodType<T>, req: Request): Promise<{ data: T | null; error: NextResponse | null }> {
+export async function validateBody<T>(schema: z.ZodType<T>, req: Request): Promise<{ data: T; error: null } | { data: null; error: NextResponse }> {
   try {
     const body = await req.json()
     const parsed = schema.safeParse(body)
