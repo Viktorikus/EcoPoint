@@ -1,3 +1,5 @@
+[![Security Pipeline](https://github.com/Viktorikus/EcoPoint/actions/workflows/security.yml/badge.svg)](https://github.com/Viktorikus/EcoPoint/actions/workflows/security.yml)
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
