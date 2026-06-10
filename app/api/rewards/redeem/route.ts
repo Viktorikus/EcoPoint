@@ -1,44 +1,63 @@
 import { NextResponse } from 'next/server'
 import pool from '@/lib/db'
-import { v4 as uuidv4 } from 'uuid'
 import { requireSession } from '@/lib/session'
+import { deductPoints } from '@/lib/points'
 
 export async function POST(req: Request) {
   const { session, error } = await requireSession()
   if (error) return error
   const userId = (session.user as any).id
 
+  const connection = await pool.getConnection()
   try {
     const body = await req.json()
     const { reward_id } = body
-    if (!reward_id) return NextResponse.json({ error: 'Missing reward_id' }, { status: 400 })
+    if (!reward_id) {
+      connection.release()
+      return NextResponse.json({ error: 'Missing reward_id' }, { status: 400 })
+    }
 
-    // check reward
-    const [rewardRows] = await pool.execute('SELECT id, point_required, stock, name FROM rewards WHERE id = ? LIMIT 1', [reward_id]) as any
-    const reward = Array.isArray(rewardRows) ? rewardRows[0] : rewardRows
-    if (!reward) return NextResponse.json({ error: 'Reward not found' }, { status: 404 })
-    if (Number(reward.stock) <= 0) return NextResponse.json({ error: 'Out of stock' }, { status: 400 })
+    await connection.beginTransaction()
 
-    // fetch user points
-    const [userRows] = await pool.execute('SELECT points FROM users WHERE id = ? LIMIT 1', [userId]) as any
-    const user = Array.isArray(userRows) ? userRows[0] : userRows
-    const userPoints = Number(user?.points ?? 0)
-    const required = Number(reward.point_required)
-    if (userPoints < required) return NextResponse.json({ error: 'Insufficient points' }, { status: 400 })
+    // 1. Lock reward row & cek stock
+    const [rewardRows]: any = await connection.execute(
+      'SELECT id, point_required, stock, name FROM rewards WHERE id = ? FOR UPDATE', 
+      [reward_id]
+    )
+    if (rewardRows.length === 0) throw new Error('Reward not found')
+    
+    const reward = rewardRows[0]
+    if (Number(reward.stock) <= 0) throw new Error('Out of stock')
 
-    // perform updates
-    await pool.execute('UPDATE rewards SET stock = stock - 1 WHERE id = ?', [reward_id])
-    await pool.execute('UPDATE users SET points = points - ? WHERE id = ?', [required, userId])
+    // 2. Idempotency Check (prevent double-click dalam 1 menit)
+    const [recentTx]: any = await connection.execute(
+      `SELECT id FROM point_transactions WHERE user_id = ? AND note = ? AND created_at > NOW() - INTERVAL 1 MINUTE`,
+      [userId, `Redeem ${reward.name}`]
+    )
+    if (recentTx.length > 0) {
+      throw new Error("Tunggu 1 menit sebelum menukar reward yang sama lagi")
+    }
 
-    const txId = uuidv4()
-    await pool.execute('INSERT INTO point_transactions (id, user_id, point_in, point_out, note, created_at) VALUES (?, ?, ?, ?, ?, NOW())', [txId, userId, 0, required, `Redeem ${reward.name}`])
+    // 3. Deduct points menggunakan secure lib (includes user lock & transaction insert)
+    await deductPoints(userId, Number(reward.point_required), `Redeem ${reward.name}`, connection)
 
-    const [newUserRows] = await pool.execute('SELECT points FROM users WHERE id = ? LIMIT 1', [userId]) as any
-    const newUser = Array.isArray(newUserRows) ? newUserRows[0] : newUserRows
-    const remaining = Number(newUser?.points ?? 0)
+    // 4. Update stock
+    await connection.execute('UPDATE rewards SET stock = stock - 1 WHERE id = ?', [reward_id])
+
+    await connection.commit()
+    connection.release()
+
+    // Get latest points to return to client
+    const [newUserRows]: any = await pool.execute('SELECT points FROM users WHERE id = ? LIMIT 1', [userId])
+    const remaining = Number(newUserRows[0]?.points ?? 0)
 
     return NextResponse.json({ ok: true, remaining_points: remaining })
-  } catch (e) {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  } catch (e: any) {
+    await connection.rollback()
+    connection.release()
+    console.error("Redeem error:", e)
+    
+    const status = (e.message === 'Reward not found') ? 404 : 400
+    return NextResponse.json({ error: e.message || 'Server error' }, { status })
   }
 }

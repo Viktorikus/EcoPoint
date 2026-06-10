@@ -29,6 +29,8 @@ function checkRateLimit(ip: string, path: string) {
 
 export default async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
+  const method = request.method
+  const requestId = crypto.randomUUID()
   
   // Step 1: Rate limiting (only for API routes)
   if (path.startsWith("/api/")) {
@@ -93,6 +95,13 @@ export default async function middleware(request: NextRequest) {
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("X-Frame-Options", "SAMEORIGIN")
   response.headers.set("X-XSS-Protection", "1; mode=block")
+  response.headers.set("X-Request-ID", requestId)
+
+  // Audit logging untuk rute spesifik
+  if (path === "/api/rewards/redeem" || path.startsWith("/api/admin/deposits") || path.startsWith("/api/petugas/deposits")) {
+    const userId = token ? (token as any).id || token.sub : "unauthenticated"
+    console.log(`[AUDIT] ${method} ${path} ${userId} ${new Date().toISOString()} reqId=${requestId}`)
+  }
 
   // Also include rate limit headers if it's an API request
   if (path.startsWith("/api/")) {

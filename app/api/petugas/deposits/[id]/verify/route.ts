@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/session";
 import pool from "@/lib/db";
+import { calculatePoints, addPoints } from "@/lib/points";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,7 +25,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await connection.beginTransaction();
 
     const [deposits]: any = await connection.execute(
-      `SELECT user_id, point, status FROM waste_deposits WHERE id = ?`,
+      `SELECT user_id, weight, category_id, status FROM waste_deposits WHERE id = ?`,
       [id]
     );
 
@@ -42,22 +43,31 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: "Deposit already processed" }, { status: 400 });
     }
 
-    // Update deposit status
-    await connection.execute(
-      `UPDATE waste_deposits SET status = ?, verified_by = ? WHERE id = ?`,
-      [status, officerId, id]
-    );
-
-    // If verified, give points to user and log transaction
     if (status === 'VERIFIED') {
+      const [categories]: any = await connection.execute(
+        `SELECT point_per_kg FROM waste_categories WHERE id = ?`,
+        [deposit.category_id]
+      );
+      if (categories.length === 0) {
+        throw new Error("Category not found");
+      }
+      
+      const pointPerKg = Number(categories[0].point_per_kg);
+      const calculatedPoints = calculatePoints(Number(deposit.weight), pointPerKg);
+
+      // Update status & point di waste_deposits (mengabaikan input client)
       await connection.execute(
-        `UPDATE users SET points = points + ? WHERE id = ?`,
-        [deposit.point, deposit.user_id]
+        `UPDATE waste_deposits SET status = ?, verified_by = ?, point = ? WHERE id = ?`,
+        [status, officerId, calculatedPoints, id]
       );
 
+      // Tambah points via secure lib
+      await addPoints(deposit.user_id, calculatedPoints, `Verifikasi setoran sampah #${id}`, connection);
+    } else {
+      // Jika REJECTED, update status saja
       await connection.execute(
-        `INSERT INTO point_transactions (user_id, point_in, point_out, note) VALUES (?, ?, 0, ?)`,
-        [deposit.user_id, deposit.point, `Verifikasi setoran sampah #${id}`]
+        `UPDATE waste_deposits SET status = ?, verified_by = ? WHERE id = ?`,
+        [status, officerId, id]
       );
     }
 
@@ -69,6 +79,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await connection.rollback();
     connection.release();
     console.error("Error verifying deposit:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
