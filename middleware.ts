@@ -55,7 +55,7 @@ export default async function middleware(request: NextRequest) {
 
   // Step 2: API route protection (RBAC)
   if (path.startsWith("/api/")) {
-    const isPublicApi = path.startsWith("/api/auth/") || path.startsWith("/api/leaderboard")
+    const isPublicApi = path.startsWith("/api/auth/") || path.startsWith("/api/leaderboard") || path.startsWith("/api/uploads/")
     
     if (!isPublicApi) {
       if (!token) {
