@@ -15,11 +15,13 @@ export default function AdminRewardsPage() {
 
   const [formData, setFormData] = useState({
     name: "",
-    category: "",
-    point_required: 0,
+    category: "pulsa",
+    pointRequired: 0,
     stock: 0,
     image: ""
   })
+  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   useEffect(() => {
     fetchRewards()
@@ -41,18 +43,19 @@ export default function AdminRewardsPage() {
   }
 
   function openModal(reward?: any) {
+    setSelectedFile(null)
     if (reward) {
       setEditingId(reward.id)
       setFormData({
         name: reward.name,
         category: reward.category,
-        point_required: reward.point_required,
+        pointRequired: reward.point_required, // mapping dari DB
         stock: reward.stock,
         image: reward.image || ""
       })
     } else {
       setEditingId(null)
-      setFormData({ name: "", category: "", point_required: 0, stock: 0, image: "" })
+      setFormData({ name: "", category: "pulsa", pointRequired: 0, stock: 0, image: "" })
     }
     setIsModalOpen(true)
   }
@@ -60,6 +63,7 @@ export default function AdminRewardsPage() {
   function closeModal() {
     setIsModalOpen(false)
     setEditingId(null)
+    setSelectedFile(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -67,22 +71,48 @@ export default function AdminRewardsPage() {
     setIsSubmitting(true)
 
     try {
+      let imageUrl = formData.image
+
+      // Jika ada file baru yang dipilih, upload terlebih dahulu
+      if (selectedFile) {
+        const fileData = new FormData()
+        fileData.append("file", selectedFile)
+
+        const uploadRes = await fetch("/api/admin/rewards/upload", {
+          method: "POST",
+          body: fileData
+        })
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json()
+          throw new Error(errData.error || "Gagal upload gambar")
+        }
+
+        const uploadResult = await uploadRes.json()
+        imageUrl = uploadResult.url
+      }
+
       const url = editingId ? `/api/admin/rewards/${editingId}` : "/api/admin/rewards"
       const method = editingId ? "PATCH" : "POST"
+
+      const payload = { ...formData, image: imageUrl }
 
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       })
 
-      if (!res.ok) throw new Error("Failed to save reward")
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || "Failed to save reward")
+      }
 
       await fetchRewards()
       closeModal()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      alert("Gagal menyimpan data reward")
+      alert(err.message || "Gagal menyimpan data reward")
     } finally {
       setIsSubmitting(false)
     }
@@ -150,7 +180,7 @@ export default function AdminRewardsPage() {
                   </div>
                 </div>
                 <div className="p-5 flex-1 flex flex-col">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">{reward.category}</div>
+                  <div className="text-xs font-semibold text-gray-500 mb-1 uppercase">{reward.category}</div>
                   <h3 className="text-lg font-bold text-gray-900 mb-3">{reward.name}</h3>
                   <div className="mt-auto flex items-center justify-between">
                     <span className="text-sm text-gray-600">Stok: <span className="font-medium text-gray-900">{reward.stock}</span></span>
@@ -186,14 +216,16 @@ export default function AdminRewardsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    placeholder="Contoh: E-Wallet, Pulsa, Sembako"
-                    className="w-full p-2 border border-gray-300 rounded focus:ring-[#16A34A] focus:border-[#16A34A] text-gray-900"
-                  />
+                    className="w-full p-2 border border-gray-300 rounded focus:ring-[#16A34A] focus:border-[#16A34A] text-gray-900 bg-white"
+                  >
+                    <option value="pulsa">Pulsa</option>
+                    <option value="voucher">Voucher</option>
+                    <option value="merchandise">Merchandise</option>
+                  </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -201,9 +233,9 @@ export default function AdminRewardsPage() {
                     <input
                       type="number"
                       required
-                      min="0"
-                      value={formData.point_required}
-                      onChange={(e) => setFormData({ ...formData, point_required: parseInt(e.target.value) || 0 })}
+                      min="1"
+                      value={formData.pointRequired}
+                      onChange={(e) => setFormData({ ...formData, pointRequired: parseInt(e.target.value) || 0 })}
                       className="w-full p-2 border border-gray-300 rounded focus:ring-[#16A34A] focus:border-[#16A34A] text-gray-900"
                     />
                   </div>
@@ -220,14 +252,19 @@ export default function AdminRewardsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">URL Gambar</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gambar Reward</label>
+                  {formData.image && !selectedFile && (
+                    <div className="mb-2">
+                      <img src={formData.image} alt="Preview" className="h-20 rounded border border-gray-200" />
+                    </div>
+                  )}
                   <input
-                    type="url"
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    placeholder="https://..."
+                    type="file"
+                    accept="image/jpeg, image/png, image/webp"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                     className="w-full p-2 border border-gray-300 rounded focus:ring-[#16A34A] focus:border-[#16A34A] text-gray-900"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Format: JPG, PNG, WebP (Max 2MB)</p>
                 </div>
                 
                 <div className="mt-6 flex justify-end gap-3">
