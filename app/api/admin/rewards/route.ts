@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/session";
 import pool from "@/lib/db";
+import { rewardSchema, validateBody } from "@/lib/validation";
 
 export async function GET(req: Request) {
   try {
@@ -20,16 +21,14 @@ export async function POST(req: Request) {
     const auth = await requireSession(["ADMIN"]);
     if (auth.error) return auth.error;
 
-    const body = await req.json();
-    const { name, category, point_required, stock, image } = body;
+    const { data, error } = await validateBody(rewardSchema, req);
+    if (error) return error;
 
-    if (!name || !category || point_required === undefined || stock === undefined) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
+    const { name, category, pointRequired, stock, image } = data;
 
     const [result] = await pool.execute(
       `INSERT INTO rewards (name, category, point_required, stock, image) VALUES (?, ?, ?, ?, ?)`,
-      [name, category, point_required, stock, image || null]
+      [name, category, pointRequired, stock, image || null]
     );
 
     return NextResponse.json({ message: "Reward created successfully", id: (result as any).insertId }, { status: 201 });

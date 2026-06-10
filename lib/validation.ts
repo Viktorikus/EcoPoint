@@ -38,6 +38,14 @@ export const paginationSchema = z.object({
   search: z.string().max(100).optional()
 })
 
+export const rewardSchema = z.object({
+  name: z.string().min(2).max(100),
+  pointRequired: z.number().positive().max(100000),
+  stock: z.number().min(0).max(10000),
+  category: z.enum(['pulsa', 'voucher', 'merchandise']),
+  image: z.string().optional()
+})
+
 export async function validateBody<T>(schema: z.ZodType<T>, req: Request): Promise<{ data: T; error: null } | { data: null; error: NextResponse }> {
   try {
     const body = await req.json()

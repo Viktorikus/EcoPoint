@@ -22,6 +22,8 @@ services:
     # Tidak di-expose ke publik (port 3000 hanya tersedia di internal network)
     expose:
       - "3000"
+    volumes:
+      - ./uploads:/app/uploads
     networks:
       - ecopoint_network
 

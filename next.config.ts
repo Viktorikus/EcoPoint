@@ -14,6 +14,16 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [],
   },
+
+  // Konfigurasi route statis untuk file upload lokal
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: '/uploads/:path*',
+      },
+    ]
+  },
   
   // Custom Security Headers
   async headers() {

@@ -11,9 +11,12 @@ import { Plus_Jakarta_Sans } from "next/font/google"
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "600", "700"] })
 
 const schema = z.object({
-  name: z.string().min(2, "Nama minimal 2 karakter"),
+  name: z.string().min(2, "Nama minimal 2 karakter").max(50, "Maksimal 50 karakter"),
   email: z.string().email("Format email tidak valid"),
-  password: z.string().min(6, "Password minimal 6 karakter"),
+  password: z.string()
+    .min(8, "Password minimal 8 karakter")
+    .max(100, "Maksimal 100 karakter")
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).*$/, "Password harus mengandung huruf besar, huruf kecil, dan angka"),
   phone: z.string().optional(),
   address: z.string().optional(),
 })
@@ -40,7 +43,13 @@ export default function RegisterPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setErrorMessage(data.error ?? "Registrasi gagal.")
+        if (data.details) {
+          // Gabungkan semua pesan error dari zod details menjadi satu string
+          const errorDetails = Object.values(data.details).flat().join(", ")
+          setErrorMessage(`Validasi Gagal: ${errorDetails}`)
+        } else {
+          setErrorMessage(data.error ?? "Registrasi gagal.")
+        }
         return
       }
       router.push("/auth/login?registered=1")
