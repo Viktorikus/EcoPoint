@@ -32,6 +32,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Buat direktori uploads dan set ownership ke nextjs
+RUN mkdir -p /app/uploads/rewards && chown -R nextjs:nodejs /app/uploads
+
 # Switch ke non-root user
 USER nextjs
 

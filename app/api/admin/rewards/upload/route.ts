@@ -55,10 +55,10 @@ export async function POST(req: Request) {
     // Tulis ke disk
     await fs.writeFile(filepath, buffer);
 
-    // Kembalikan URL publik
-    return NextResponse.json({ url: `/uploads/rewards/${filename}` }, { status: 201 });
+    // Kembalikan URL publik menggunakan API route yang baru dibuat
+    return NextResponse.json({ url: `/api/uploads/rewards/${filename}` }, { status: 201 });
   } catch (error: any) {
     console.error("Upload error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

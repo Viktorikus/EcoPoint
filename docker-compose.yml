@@ -23,7 +23,7 @@ services:
     expose:
       - "3000"
     volumes:
-      - ./uploads:/app/uploads
+      - uploads_data:/app/uploads
     networks:
       - ecopoint_network
 
@@ -66,3 +66,4 @@ networks:
 volumes:
   # Named volume untuk persistent storage database (disarankan daripada bind mount)
   db_data:
+  uploads_data:

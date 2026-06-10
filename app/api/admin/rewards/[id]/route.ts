@@ -52,9 +52,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
 
     // Hapus file dari disk jika path valid
-    if (imagePath && imagePath.startsWith("/uploads/rewards/")) {
+    if (imagePath && (imagePath.startsWith("/uploads/rewards/") || imagePath.startsWith("/api/uploads/rewards/"))) {
       try {
-        const absolutePath = path.join(process.cwd(), imagePath);
+        const localPath = imagePath.replace("/api/uploads", "/uploads");
+        const absolutePath = path.join(process.cwd(), localPath);
         await fs.unlink(absolutePath);
       } catch (err) {
         console.error("Failed to delete image file:", err);
