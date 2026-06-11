@@ -1,7 +1,10 @@
 FROM nginx:alpine
 
-# Install ModSecurity module for Nginx from Alpine repository
-RUN apk add --no-cache modsecurity nginx-mod-http-modsecurity curl git
+# Install ModSecurity module for Nginx from Alpine repository (Edge testing)
+RUN apk add --no-cache \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing \
+    modsecurity nginx-mod-http-modsecurity curl git
 
 # Download OWASP Core Rule Set v4
 RUN git clone --depth 1 --branch v4.0.0 \
