@@ -45,7 +45,9 @@ services:
       - ecopoint_network
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     container_name: ecopoint_nginx
     restart: always
     ports:
@@ -56,6 +58,8 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro # Mount untuk SSL certificates (readonly)
+      - ./nginx/modsecurity:/etc/nginx/modsecurity:ro
+      - modsec_logs:/var/log/nginx
     networks:
       - ecopoint_network
 
@@ -67,3 +71,4 @@ volumes:
   # Named volume untuk persistent storage database (disarankan daripada bind mount)
   db_data:
   uploads_data:
+  modsec_logs:
