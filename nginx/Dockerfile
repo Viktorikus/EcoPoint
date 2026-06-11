@@ -17,9 +17,8 @@ COPY modsecurity/ecopoint-rules.conf /etc/nginx/modsecurity/
 # OWASP image biasanya memakai template, tapi kita menimpanya langsung
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Teruskan log Modsec ke stdout/stderr Docker agar bisa dibaca dari 'docker logs'
-RUN touch /var/log/nginx/modsec_audit.log \
-    && chown nginx:nginx /var/log/nginx/modsec_audit.log
+# OWASP image drops privileges to non-root user, so we don't need to touch logs here
+# Nginx will write to /var/log/nginx/modsec_audit.log natively at runtime (since it's a volume)
 
 EXPOSE 80 443
 CMD ["nginx", "-g", "daemon off;"]
