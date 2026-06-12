@@ -18,10 +18,9 @@ USER root
 RUN rm -f /etc/nginx/templates/conf.d/default.conf.template
 USER nginx
 
-# Salin konfigurasi utama Nginx
-# OWASP image biasanya memakai template, tapi kita menimpanya langsung
-# COPY nginx.conf /etc/nginx/nginx.conf
-
+# Salin konfigurasi Nginx kita secara langsung ke dalam image (bukan bind mount)
+# Agar script OWASP base image (seperti 93-update-proxy-ssl-config.sh) bisa memodifikasinya tanpa error "Resource busy"
+COPY conf.d/default.conf /etc/nginx/conf.d/default.conf
 # OWASP image drops privileges to non-root user, so we don't need to touch logs here
 # Nginx will write to /var/log/nginx/modsec_audit.log natively at runtime (since it's a volume)
 
