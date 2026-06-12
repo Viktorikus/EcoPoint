@@ -14,7 +14,9 @@ COPY modsecurity/unicode.mapping /etc/nginx/modsecurity/
 COPY modsecurity/ecopoint-rules.conf /etc/nginx/modsecurity/
 
 # Hapus template bawaan Nginx agar entrypoint tidak mencoba menimpa default.conf kita
+USER root
 RUN rm -f /etc/nginx/templates/conf.d/default.conf.template
+USER nginx
 
 # Salin konfigurasi utama Nginx
 # OWASP image biasanya memakai template, tapi kita menimpanya langsung
