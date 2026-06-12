@@ -51,10 +51,10 @@ async function seedAll() {
 
     console.log("Seeding Users...");
     const users = [
-      { id: crypto.randomUUID(), email: 'admin@ecopoint.com', pass: 'admin123', name: 'Super Admin', role: 'ADMIN', points: 0 },
-      { id: crypto.randomUUID(), email: 'petugas@ecopoint.com', pass: 'petugas123', name: 'Petugas Utama', role: 'PETUGAS', points: 0 },
-      { id: crypto.randomUUID(), email: 'user1@ecopoint.com', pass: 'user123', name: 'Budi Santoso', role: 'USER', points: 0 },
-      { id: crypto.randomUUID(), email: 'user2@ecopoint.com', pass: 'user123', name: 'Siti Rahma', role: 'USER', points: 0 },
+      { id: crypto.randomUUID(), email: 'admin@ecopoint.com', pass: 'Adm1n@EcoPoint2025', name: 'Super Admin', role: 'ADMIN', points: 0 },
+      { id: crypto.randomUUID(), email: 'petugas@ecopoint.com', pass: 'Petugas@EcoPoint2025', name: 'Petugas Utama', role: 'PETUGAS', points: 0 },
+      { id: crypto.randomUUID(), email: 'user1@ecopoint.com', pass: 'User1@EcoPoint2025', name: 'Budi Santoso', role: 'USER', points: 0 },
+      { id: crypto.randomUUID(), email: 'user2@ecopoint.com', pass: 'User2@EcoPoint2025', name: 'Siti Rahma', role: 'USER', points: 0 },
     ];
     for (const u of users) {
       const hashed = await bcrypt.hash(u.pass, 10);
