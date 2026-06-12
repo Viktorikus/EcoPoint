@@ -15,7 +15,7 @@ COPY modsecurity/ecopoint-rules.conf /etc/nginx/modsecurity/
 
 # Salin konfigurasi utama Nginx
 # OWASP image biasanya memakai template, tapi kita menimpanya langsung
-COPY nginx.conf /etc/nginx/nginx.conf
+# COPY nginx.conf /etc/nginx/nginx.conf
 
 # OWASP image drops privileges to non-root user, so we don't need to touch logs here
 # Nginx will write to /var/log/nginx/modsec_audit.log natively at runtime (since it's a volume)
