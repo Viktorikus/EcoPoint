@@ -74,9 +74,113 @@ Untuk menguji aplikasi, gunakan akun yang sudah tersedia di *SQL dump* Anda (mis
 ---
 
 ## 🔒 Keamanan & Infrastruktur Nginx
-- **HTTPS & SSL:** Nginx telah dikonfigurasi untuk menjalankan aplikasi via jalur HTTPS (port 443) dengan dukungan HTTP/2. Pastikan file `cert.pem` dan `key.pem` yang sah diletakkan di `nginx/ssl/` (atau ubah permissionnya menjadi `644` bila menggunakan *self-signed cert*).
+- **HTTPS & SSL:** Nginx telah dikonfigurasi untuk menjalankan aplikasi via jalur HTTPS (port 443) dengan dukungan HTTP/2. Pastikan file `cert.pem` (permission `644`) dan `key.pem` (permission `600` — private key tidak boleh readable user lain) diletakkan di `nginx/ssl/`.
 - **ModSecurity WAF:** Aplikasi dilindungi oleh perlindungan *Web Application Firewall* OWASP untuk menangkis berbagai serangan seperti SQL Injection, XSS, dan anomali payload lainnya.
 - **Read-Only Container:** Container Next.js berjalan dengan *Read-Only Root Filesystem* untuk meminimalisasi risiko modifikasi file secara ilegal dari dalam container.
+
+## 🏗 Arsitektur Infrastruktur (Blue Team Setup)
+
+EcoPoint dideploy menggunakan arsitektur 2 VM untuk pemisahan tanggung jawab (defense in depth):
+
+| VM | Peran | Komponen |
+|---|---|---|
+| **VM1 - Web Server** | Hosting aplikasi | Docker (App, Nginx+ModSecurity, MySQL), Suricata IDS, Fail2Ban, Wazuh Agent |
+| **VM2 - SOC Server** | Security monitoring | Wazuh Manager, Wazuh Dashboard, Wazuh Indexer |
+
+**Flow Data:**
+Internet → Nginx (ModSecurity WAF) → Next.js App → MySQL
+↓
+Suricata IDS + Access/Error Logs
+↓
+Wazuh Agent (VM1) → Wazuh Manager (VM2) → Telegram Alert
+
+---
+
+## ✅ Checklist Implementasi Keamanan
+
+### Wajib (10/10)
+- [x] Password Hashing (bcrypt, cost factor 12)
+- [x] Session Management (NextAuth JWT)
+- [x] Validasi Input (Zod, server-side)
+- [x] Proteksi SQL Injection (mysql2 parameterized query + ModSecurity)
+- [x] Proteksi XSS (CSP header + React auto-escaping)
+- [x] CSRF Protection (NextAuth built-in)
+- [x] Rate Limiting & Brute Force Prevention (Nginx + middleware + Fail2Ban)
+- [x] Role-Based Access Control (ADMIN/PETUGAS/USER)
+- [x] Secure File Upload (validasi MIME, ukuran, rename UUID)
+- [x] Logging & Monitoring (Suricata + Wazuh + Telegram)
+
+### Bonus
+- [x] HTTPS/TLS (TLSv1.3, self-signed)
+- [x] Reverse Proxy Security (Nginx hardening)
+- [x] **ModSecurity WAF + OWASP CRS** (50+ rules)
+- [x] Docker Security (non-root container, read-only filesystem)
+- [x] IDS (Suricata)
+- [x] CI/CD Security (GitHub Actions: npm audit, ESLint, TypeScript check)
+- [x] Dependency Scanning (OWASP Dependency Check, npm audit)
+
+---
+
+## 🛰 Security Monitoring Stack
+
+### Suricata IDS (VM1)
+Memantau traffic jaringan secara real-time untuk mendeteksi pola serangan (port scan, exploit signature).
+
+### Wazuh SIEM (VM1 Agent → VM2 Manager)
+Mengumpulkan log dari:
+- Nginx access/error log
+- ModSecurity audit log
+- Suricata alerts
+- Auth log (SSH, sudo)
+- File Integrity Monitoring (FIM) pada folder `uploads/`
+
+Dashboard: `https://<IP_VM2>` (Wazuh Dashboard)
+
+### Telegram Bot Alert
+Setiap alert dengan level ≥ 7 (login gagal berulang, SQL injection attempt, file integrity change) otomatis dikirim ke grup Telegram SOC.
+
+### Fail2Ban (VM1)
+Auto-ban IP setelah melewati batas rate limit Nginx pada endpoint `/api/auth/*`.
+
+---
+
+## ⚠️ PENTING — Ganti Default Credentials!
+
+Sebelum deploy ke production, **WAJIB ganti semua password default**:
+
+```bash
+# Generate hash bcrypt baru
+node -e "console.log(require('bcryptjs').hashSync('PasswordBaruAnda', 12))"
+
+# Update di database
+docker compose exec db mysql -u ecopoint_user -p<password> ecopoint -e \
+  "UPDATE users SET password='<hash_baru>' WHERE email='admin@ecopoint.com';"
+```
+
+Password lemah seperti `admin123`, `user123` dapat ditebak via wordlist attack (rockyou.txt) walau tidak terdeteksi sebagai brute force oleh rate limiting.
+
+---
+
+## 🔄 CI/CD Pipeline
+
+Setiap push ke branch `main` akan menjalankan GitHub Actions (`.github/workflows/security.yml`):
+- `npm audit` — cek dependency vulnerability
+- ESLint — code quality & security linting
+- TypeScript check — type safety
+- Docker build validation
+
+---
+
+## 📁 Struktur File Upload
+
+Gambar reward disimpan di `uploads/rewards/` dengan format `reward-{uuid}.{ext}`, di-mount sebagai Docker volume agar persisten:
+
+```yaml
+volumes:
+  - ./uploads:/app/uploads
+```
+
+Validasi: MIME type (`jpeg/png/webp`), max 2MB, hanya dapat diakses ADMIN.
 
 ## 🤝 Kontribusi
 Bila Anda menemukan *bug* atau ingin menambahkan fitur baru, silakan buat *Pull Request* atau *Issue* di repositori ini.
